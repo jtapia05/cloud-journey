@@ -1,0 +1,7 @@
+kind: ConfigMap 
+apiVersion: v1 
+metadata:
+  name: {{ .Values.configMap.name }}
+data:
+  webapp-config-json: |-
+{{ .Files.Get "config.json" | indent 4 }}

@@ -1,0 +1,196 @@
+---
+# Source: gowebapp/templates/configmap.yaml
+kind: ConfigMap 
+apiVersion: v1 
+metadata:
+  name: gowebapp
+data:
+  webapp-config-json: |-
+    {
+        "Database": {
+            "Type": "MySQL",
+            "Bolt": {
+                "Path": "gowebapp.db"
+            },
+            "MongoDB": {
+                "URL": "127.0.0.1",
+                "Database": "gowebapp"
+            },
+            "MySQL": {
+                "Username": "root",
+                "Password": "rootpasswd",
+                "Name": "gowebapp",
+                "Hostname": "gowebapp-mysql",
+                "Port": 3306,
+                "Parameter": "?parseTime=true"
+            }
+        },
+        "Email": {
+            "Username": "",
+            "Password": "",
+            "Hostname": "",
+            "Port": 25,
+            "From": ""
+        },
+        "Recaptcha": {
+            "Enabled": false,
+            "Secret": "",
+            "SiteKey": ""
+        },
+        "Server": {
+            "Hostname": "",
+            "UseHTTP": true,
+            "UseHTTPS": false,
+            "HTTPPort": 80,
+            "HTTPSPort": 443,
+            "CertFile": "tls/server.crt",
+            "KeyFile": "tls/server.key"
+        },
+        "Session": {
+            "SecretKey": "@r4B?EThaSEh_drudR7P_hub=s#s2Pah",
+            "Name": "gosess",
+            "Options": {
+                "Path": "/",
+                "Domain": "",
+                "MaxAge": 28800,
+                "Secure": false,
+                "HttpOnly": true
+            }
+        },
+        "Template": {
+            "Root": "base",
+            "Children": [
+                "partial/menu",
+                "partial/footer"
+            ]
+        },
+        "View": {
+            "BaseURI": "/",
+            "Extension": "tmpl",
+            "Folder": "template",
+            "Name": "blank",
+            "Caching": true
+        }
+    }
+---
+# Source: gowebapp/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: gowebapp-mysql
+  labels:
+    helm.sh/chart: gowebapp-0.1.0
+    app.kubernetes.io/name: gowebapp
+    app.kubernetes.io/instance: gowebapp-mysql
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: NodePort
+  ports:
+    - port: 9000
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: gowebapp
+    #app.kubernetes.io/instance: gowebapp-mysql
+---
+# Source: gowebapp/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gowebapp-mysql
+  labels:
+    helm.sh/chart: gowebapp-0.1.0
+    app.kubernetes.io/name: gowebapp
+    app.kubernetes.io/instance: gowebapp-mysql
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gowebapp
+      app.kubernetes.io/instance: gowebapp-mysql
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gowebapp
+        app.kubernetes.io/instance: gowebapp-mysql
+    spec:
+      serviceAccountName: default
+      securityContext:
+        {}
+      containers:
+        - name: gowebapp
+          securityContext:
+            {}
+          image: "gcr.io/tokyo-scholar-345120/mod6_assignment_gowebapp:v1"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /register
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /register
+              port: http
+          resources:
+            limits:
+              cpu: 500m
+              memory: 2000Mi
+            requests:
+              cpu: 20m
+              memory: 10Mi
+---
+# Source: gowebapp/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gowebapp-mysql
+  labels:
+    helm.sh/chart: gowebapp-0.1.0
+    app.kubernetes.io/name: gowebapp
+    app.kubernetes.io/instance: gowebapp-mysql
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/tls-acme: "true"
+spec:
+  rules:
+    - host: "35.202.150.14.nip.io"
+      http:
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: gowebapp-mysql
+                port:
+                  number: 9000
+---
+# Source: gowebapp/templates/tests/test-connection.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "gowebapp-mysql-test-connection"
+  labels:
+    helm.sh/chart: gowebapp-0.1.0
+    app.kubernetes.io/name: gowebapp
+    app.kubernetes.io/instance: gowebapp-mysql
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['gowebapp-mysql:9000']
+  restartPolicy: Never

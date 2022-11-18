@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gowebapp.fullname" . }}
+  labels:
+    {{- include "gowebapp.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "gowebapp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "gowebapp.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "gowebapp.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.secrets }}
+          env:
+            - name: {{.Values.secrets.name}}
+              valueFrom:
+                secretKeyRef:
+                  name: {{.Values.secrets.secretReference.name}}
+                  key: {{.Values.secrets.secretReference.key}}
+          {{- end}}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /register
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /register
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /go/src/gowebapp/config
+    volumes: 
+    - name: config-volume
+      configMap:
+        name: gowebapp
+        items:
+        - key: webapp-config-json
+          path: config.json
+          {{- end}}
