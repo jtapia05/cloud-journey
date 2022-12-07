@@ -96,7 +96,9 @@ argocd app sync bookinfo
 ### Scale up the application and pay attention to the GUI
 As the replica is set to one in git, ArgoCD won't accept a manual change directly to the cluster, so it will revert the cluster to the original state.
 
+```
 kubectl scale deployment/bookinfo --replicas=5 -n default
+```
 
 ### Fork my repo and feel free to continue playing with ArgoCD.
 Resources:
