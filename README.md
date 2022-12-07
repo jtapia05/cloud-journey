@@ -10,7 +10,7 @@ export ENV=<ENV>
 export PROJECT_ID=<project-id>
 gcloud config set project $PROJECT_ID
 
-cd notepad-infra
+cd notepad-infrastructure
 terraform init
 terraform plan -var-file terraform.tfvars
 terraform apply -var-file terraform.tfvars
@@ -74,12 +74,39 @@ argocd app get simple-app
 ```
 ### To sync the app with the repo
 ```
-argocd app sync guestbook
+argocd app sync simple-app
 ```
 Alternatively, to sync from the ArgoCD UI, go to simple-app and click on SYNC.
 
 
+### In order to create another app but using the CLI. Use the following code:
+```
+argocd app create bookinfo\
+--project default \
+--repo https://github.com/jtapia05/cloud-journey \
+--path "./bookinfo" \
+--dest-namespace default \
+--dest-server https://kubernetes.default.svc
+```
+### To sync the app with the repo
+```
+argocd app sync bookinfo
+```
+
+### Scale up the application and pay attention to the GUI
+As the replica is set to one in git, ArgoCD won't accept a manual change directly to the cluster, so it will revert the cluster to the original state.
+
+kubectl scale deployment/bookinfo --replicas=5 -n default
+
+### Fork my repo and feel free to continue playing with ArgoCD.
+Resources:
+https://learning.codefresh.io/
+https://argo-cd.readthedocs.io/en/stable/getting_started/
 
 
-
+### Cleanup
+```
+cd notepad-infrastructure
+terraform destroy -var-file terraform.tfvars
+```
 
